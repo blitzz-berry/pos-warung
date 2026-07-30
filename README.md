@@ -63,6 +63,26 @@ Jika `artisan serve` sulit dipakai di Windows shell tertentu, server PHP built-i
 php -S 127.0.0.1:8000 -t public public/index.php
 ```
 
+## Aplikasi Desktop
+
+Project ini sudah memakai NativePHP Desktop, jadi Laravel tetap dipakai sebagai core app dan Electron menjadi shell desktop.
+
+```powershell
+composer install
+npm.cmd install
+php artisan native:migrate --no-interaction
+php artisan native:seed --no-interaction
+composer native:dev
+```
+
+Untuk build installer Windows:
+
+```powershell
+php artisan native:build win x64 --no-interaction
+```
+
+Jika build berhenti saat mengunduh `nativephp/php-bin`, jalankan Composer lagi sampai paket itu selesai terpasang. Di mesin ini dev desktop sudah terverifikasi jalan, tapi build installer production masih bergantung pada download paket NativePHP tersebut.
+
 ## CSV Import Produk
 
 Header minimal:

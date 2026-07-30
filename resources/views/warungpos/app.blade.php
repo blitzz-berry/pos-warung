@@ -23,7 +23,7 @@
     <aside class="sidebar">
         <a class="store-card" href="{{ route('dashboard') }}">
             @if (! empty($settings['store.logo_path']))
-                <img class="store-logo-img" src="{{ asset('storage/'.$settings['store.logo_path']) }}" alt="{{ $settings['store.name'] ?? $store->name ?? 'WarungPOS' }}">
+                <img class="store-logo-img" src="{{ route('media', ['path' => $settings['store.logo_path']]) }}" alt="{{ $settings['store.name'] ?? $store->name ?? 'WarungPOS' }}">
             @else
                 <span class="store-logo">WP</span>
             @endif
@@ -239,7 +239,7 @@
                             @foreach ($products as $product)
                                 <button class="product-card" data-add-product="{{ $product->id }}" data-category="{{ $product->category_id }}" @disabled($product->stock <= 0)>
                                     @if ($product->image_path)
-                                        <img class="product-thumb-img" src="{{ asset('storage/'.$product->image_path) }}" alt="{{ $product->name }}">
+                                        <img class="product-thumb-img" src="{{ route('media', ['path' => $product->image_path]) }}" alt="{{ $product->name }}">
                                     @else
                                         <span class="product-thumb">{{ strtoupper(substr($product->name, 0, 2)) }}</span>
                                     @endif
@@ -402,7 +402,7 @@
                         <h2>Informasi Produk</h2>
                         <div class="product-detail-head wide">
                             @if ($product->image_path)
-                                <img class="product-detail-preview" src="{{ asset('storage/'.$product->image_path) }}" alt="{{ $product->name }}">
+                                <img class="product-detail-preview" src="{{ route('media', ['path' => $product->image_path]) }}" alt="{{ $product->name }}">
                             @else
                                 <span class="product-detail-placeholder">{{ strtoupper(substr($product->name, 0, 2)) }}</span>
                             @endif
@@ -764,7 +764,7 @@
                     <section class="card form-section">
                         <h2>Profil Toko</h2>
                         @if (! empty($settings['store.logo_path']))
-                            <img class="settings-logo-preview" src="{{ asset('storage/'.$settings['store.logo_path']) }}" alt="{{ $settings['store.name'] ?? 'Logo toko' }}">
+                            <img class="settings-logo-preview" src="{{ route('media', ['path' => $settings['store.logo_path']]) }}" alt="{{ $settings['store.name'] ?? 'Logo toko' }}">
                         @endif
                         <label><span>Logo toko</span><input name="store_logo" type="file" accept="image/png,image/jpeg,image/webp"></label>
                         <label><span>Nama toko</span><input name="store__name" value="{{ $settings['store.name'] ?? '' }}"></label>

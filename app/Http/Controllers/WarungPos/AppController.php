@@ -939,6 +939,14 @@ class AppController extends Controller
         }, 'warungpos-backup-'.now()->format('Ymd-His').'.json', ['Content-Type' => 'application/json']);
     }
 
+    public function publicMedia(string $path)
+    {
+        abort_if(str_contains($path, '..') || str_starts_with($path, '/'), 404);
+        abort_unless(Storage::disk('public')->exists($path), 404);
+
+        return Storage::disk('public')->response($path);
+    }
+
     private function partyScreen(string $page, string $title, string $table)
     {
         return $this->screen($page, [

@@ -107,6 +107,16 @@ class WarungPosWorkflowTest extends TestCase
         $this->assertDatabaseHas('stock_movements', ['product_id' => $product->id, 'movement_type' => 'opening_stock']);
     }
 
+    public function test_public_media_route_serves_uploaded_file(): void
+    {
+        Storage::fake('public');
+        $admin = User::where('username', 'admin')->firstOrFail();
+        $path = UploadedFile::fake()->image('logo.png')->store('uploads/logos', 'public');
+
+        $this->actingAs($admin)->get(route('media', ['path' => $path]))->assertOk();
+        $this->actingAs($admin)->get(route('media', ['path' => '../.env']))->assertNotFound();
+    }
+
     public function test_supervisor_can_create_product_with_scanned_barcode(): void
     {
         $supervisor = User::where('username', 'supervisor')->firstOrFail();

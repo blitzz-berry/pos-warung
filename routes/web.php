@@ -13,6 +13,7 @@ Route::post('/webhooks/payments/{provider}', [AppController::class, 'paymentWebh
 Route::middleware('auth')->group(function () {
     Route::get('/', [AppController::class, 'dashboard'])->middleware('permission:dashboard.view')->name('dashboard');
     Route::post('/logout', [AppController::class, 'logout'])->name('logout');
+    Route::get('/media/{path}', [AppController::class, 'publicMedia'])->where('path', '.*')->name('media');
 
     Route::get('/pos', [AppController::class, 'pos'])->middleware('permission:pos.access')->name('pos');
     Route::post('/sales', [AppController::class, 'checkout'])->middleware('permission:sale.create')->name('sales.checkout');
