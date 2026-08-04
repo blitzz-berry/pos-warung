@@ -75,6 +75,10 @@
         "native:dev": [
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -k -c \"#93c5fd,#c4b5fd\" \"php artisan native:run --no-interaction\" \"npm run dev\" --names=app,vite"
+        ],
+        "desktop:build:win": [
+            "Composer\\Config::disableProcessTimeout",
+            "powershell -ExecutionPolicy Bypass -File .\\scripts\\build-desktop-production.ps1"
         ]
     },
     "extra": {

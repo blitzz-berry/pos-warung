@@ -4,6 +4,8 @@ use App\Http\Controllers\WarungPos\AppController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
+    Route::get('/setup', [AppController::class, 'setupForm'])->name('setup');
+    Route::post('/setup', [AppController::class, 'setup'])->middleware('throttle:10,1')->name('setup.store');
     Route::get('/login', [AppController::class, 'loginForm'])->name('login');
     Route::post('/login', [AppController::class, 'login'])->middleware('throttle:5,1')->name('login.attempt');
 });

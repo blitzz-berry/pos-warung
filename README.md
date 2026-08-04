@@ -78,10 +78,19 @@ composer native:dev
 Untuk build installer Windows:
 
 ```powershell
-php artisan native:build win x64 --no-interaction
+composer desktop:build:win
 ```
 
-Jika build berhenti saat mengunduh `nativephp/php-bin`, jalankan Composer lagi sampai paket itu selesai terpasang. Di mesin ini dev desktop sudah terverifikasi jalan, tapi build installer production masih bergantung pada download paket NativePHP tersebut.
+Output production build:
+
+```text
+nativephp\electron\dist\WarungPOS-1.0.0-setup.exe
+nativephp\electron\dist\win-unpacked\warungpos.exe
+```
+
+Saat database desktop masih kosong, aplikasi akan membuka setup awal untuk membuat akun owner dan profil toko. Jangan memakai akun demo untuk rilis production.
+
+Jika build berhenti saat mengunduh `nativephp/php-bin`, jalankan Composer lagi sampai paket itu selesai terpasang. Untuk distribusi publik production di Windows, siapkan code-signing certificate atau Azure Trusted Signing agar installer tidak dianggap unknown publisher oleh Windows.
 
 ## CSV Import Produk
 

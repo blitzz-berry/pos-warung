@@ -25,9 +25,157 @@ class AppController extends Controller
 {
     public function loginForm()
     {
+        if (! User::query()->exists()) {
+            return redirect()->route('setup');
+        }
+
         return Auth::check()
             ? redirect()->route('dashboard')
             : view('warungpos.login');
+    }
+
+    public function setupForm()
+    {
+        return User::query()->exists()
+            ? redirect()->route('login')
+            : view('warungpos.setup');
+    }
+
+    public function setup(Request $request)
+    {
+        if (User::query()->exists()) {
+            return redirect()->route('login');
+        }
+
+        $data = $request->validate([
+            'store_name' => ['required', 'string', 'max:120'],
+            'store_phone' => ['nullable', 'string', 'max:30'],
+            'store_address' => ['nullable', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:120'],
+            'username' => ['required', 'string', 'alpha_dash', 'max:50'],
+            'email' => ['required', 'email', 'max:255'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'pin' => ['required', 'digits:6'],
+        ]);
+
+        $user = DB::transaction(function () use ($data) {
+            if (User::query()->exists()) {
+                throw ValidationException::withMessages(['setup' => 'Setup awal sudah selesai. Silakan login.']);
+            }
+
+            $now = now();
+            $storeId = DB::table('stores')->insertGetId([
+                'code' => 'TOKO-001',
+                'name' => $data['store_name'],
+                'address' => $data['store_address'] ?? null,
+                'phone' => $data['store_phone'] ?? null,
+                'email' => $data['email'],
+                'timezone' => config('app.timezone', 'Asia/Jakarta'),
+                'currency' => 'IDR',
+                'status' => 'active',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            DB::table('warehouses')->insert([
+                'store_id' => $storeId,
+                'code' => 'GUD-UTAMA',
+                'name' => 'Gudang Utama',
+                'status' => 'active',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            DB::table('terminals')->insert([
+                'store_id' => $storeId,
+                'code' => 'KSR-01',
+                'name' => 'Kasir Utama',
+                'status' => 'active',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            $roleIds = [];
+            foreach (['owner' => 'Owner', 'admin' => 'Admin', 'supervisor' => 'Supervisor', 'kasir' => 'Kasir'] as $slug => $name) {
+                $roleIds[$slug] = DB::table('roles')->insertGetId([
+                    'slug' => $slug,
+                    'name' => $name,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
+
+            foreach ($this->permissionMatrix() as $module => $slugs) {
+                foreach ($slugs as $slug) {
+                    $permissionId = DB::table('permissions')->insertGetId([
+                        'slug' => $slug,
+                        'module' => $module,
+                        'name' => Str::headline(str_replace('.', ' ', $slug)),
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+
+                    DB::table('role_permissions')->insert(['role_id' => $roleIds['owner'], 'permission_id' => $permissionId]);
+                }
+            }
+
+            foreach ([['Pcs', 'pcs'], ['Pack', 'pack'], ['Dus', 'dus'], ['Botol', 'botol'], ['Kilogram', 'kg'], ['Liter', 'liter']] as [$name, $code]) {
+                DB::table('units')->insert(['name' => $name, 'code' => $code, 'created_at' => $now, 'updated_at' => $now]);
+            }
+
+            foreach (['Umum', 'Sembako', 'Minuman', 'Rumah Tangga'] as $name) {
+                DB::table('categories')->insert(['name' => $name, 'slug' => Str::slug($name), 'status' => 'active', 'created_at' => $now, 'updated_at' => $now]);
+            }
+
+            foreach ([['cash', 'Tunai', 'manual', true], ['qris', 'QRIS', 'manual', false], ['transfer', 'Transfer Bank', 'manual', false]] as [$code, $name, $type, $isCash]) {
+                DB::table('payment_methods')->insert(['code' => $code, 'name' => $name, 'type' => $type, 'is_cash' => $isCash, 'is_active' => true, 'created_at' => $now, 'updated_at' => $now]);
+            }
+
+            foreach ([
+                'store.name' => $data['store_name'],
+                'store.address' => $data['store_address'] ?? '',
+                'store.phone' => $data['store_phone'] ?? '',
+                'receipt.footer' => 'Terima kasih atas kunjungan Anda.',
+                'pos.tax_rate' => '0',
+                'pos.allow_negative_stock' => '0',
+                'pos.discount_limit' => '10',
+                'backup.retention_days' => '30',
+            ] as $key => $value) {
+                DB::table('settings')->insert(['key' => $key, 'group' => Str::before($key, '.'), 'value' => $value, 'type' => 'string', 'created_at' => $now, 'updated_at' => $now]);
+            }
+
+            $user = User::create([
+                'name' => $data['name'],
+                'username' => $data['username'],
+                'email' => $data['email'],
+                'password' => $data['password'],
+                'pin_hash' => Hash::make($data['pin']),
+                'status' => 'active',
+            ]);
+            $user->forceFill(['email_verified_at' => $now])->save();
+
+            DB::table('user_roles')->insert(['user_id' => $user->id, 'role_id' => $roleIds['owner']]);
+            DB::table('user_stores')->insert(['user_id' => $user->id, 'store_id' => $storeId]);
+            DB::table('audit_logs')->insert([
+                'user_id' => $user->id,
+                'action' => 'setup',
+                'module' => 'system',
+                'record_id' => $storeId,
+                'after_values' => json_encode(['store' => $data['store_name'], 'owner' => $data['username']]),
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+                'reason' => 'Initial desktop setup',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            return $user;
+        });
+
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->route('dashboard')->with('status', 'Setup awal selesai.');
     }
 
     public function login(Request $request)
@@ -1049,6 +1197,23 @@ class AppController extends Controller
             'stock' => (float) ($product->stock ?? 0),
             'barcode' => $product->barcode,
         ])->values()->toJson();
+    }
+
+    private function permissionMatrix(): array
+    {
+        return [
+            'dashboard' => ['dashboard.view'],
+            'pos' => ['pos.access', 'sale.create', 'sale.view', 'sale.cancel', 'sale.refund', 'sale.reprint_receipt'],
+            'payment' => ['payment.cash', 'payment.non_cash', 'payment.split', 'payment.refund'],
+            'product' => ['product.view', 'product.create', 'product.update', 'product.delete', 'product.import', 'product.export'],
+            'stock' => ['stock.view', 'stock.adjust', 'stock.transfer', 'stock.opname'],
+            'purchase' => ['purchase.view', 'purchase.create', 'purchase.receive', 'purchase.cancel', 'purchase.return'],
+            'party' => ['supplier.manage', 'customer.manage'],
+            'shift' => ['shift.open', 'shift.close', 'shift.view_all'],
+            'expense' => ['expense.create', 'expense.approve'],
+            'report' => ['report.sales', 'report.profit', 'report.inventory', 'report.cashier'],
+            'admin' => ['user.manage', 'role.manage', 'setting.manage', 'audit.view'],
+        ];
     }
 
     private function activeShift(): ?object
